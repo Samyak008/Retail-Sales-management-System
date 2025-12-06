@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict
@@ -51,11 +52,19 @@ def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 @lru_cache(maxsize=1)
 def load_data() -> pd.DataFrame:
-    data_path = Path(__file__).resolve().parents[2] / DATA_FILENAME
-    if not data_path.exists():
-        raise FileNotFoundError(f"Dataset not found at {data_path}")
-
-    df = pd.read_csv(data_path, low_memory=False)
+    # Check for URL in environment variable first
+    data_url = os.getenv("DATA_CSV_URL")
+    
+    if data_url:
+        # Load from URL (for deployment)
+        df = pd.read_csv(data_url, low_memory=False)
+    else:
+        # Load from local file (for development)
+        data_path = Path(__file__).resolve().parents[2] / DATA_FILENAME
+        if not data_path.exists():
+            raise FileNotFoundError(f"Dataset not found at {data_path}")
+        df = pd.read_csv(data_path, low_memory=False)
+    
     df = _standardize_columns(df)
 
     if "date" in df.columns:
