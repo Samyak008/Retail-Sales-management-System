@@ -7,8 +7,8 @@ import { PaginationControls } from "./components/PaginationControls";
 import { SearchBar } from "./components/SearchBar";
 import { SortingDropdown } from "./components/SortingDropdown";
 import { TransactionsTable } from "./components/TransactionsTable";
-import { useMeta, useSales } from "../lib/hooks";
-import { SalesQueryParams, SortBy, SortOrder } from "../lib/types";
+import { useMeta, useSales } from "@/lib/hooks";
+import { SalesQueryParams, SortBy, SortOrder } from "@/lib/types";
 
 export default function Page() {
   const [params, setParams] = useState<SalesQueryParams>({
