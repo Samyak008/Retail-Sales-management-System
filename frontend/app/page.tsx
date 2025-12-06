@@ -41,97 +41,92 @@ export default function Page() {
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 md:px-8">
-      <header className="mb-8 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-ink-500">Dashboard</p>
-          <h1 className="text-3xl font-semibold text-ink-900">Retail Sales Management</h1>
-          <p className="text-sm text-ink-600">Search, filter, sort, and paginate transactions.</p>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-ink-600">
-          {isFetching ? (
-            <span className="rounded-full bg-ink-100 px-3 py-1 text-ink-700">Refreshing...</span>
-          ) : (
-            <span className="rounded-full bg-ink-100 px-3 py-1 text-ink-700">Live</span>
-          )}
-        </div>
-      </header>
-
-      <div className="grid items-start gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-            <SearchBar
-              customerName={params.customer_name}
-              phone={params.phone}
-              onSubmit={(v) => submitSearch(v)}
-            />
-          </div>
-
-          <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-ink-900">Filters</h2>
-                <p className="text-sm text-ink-600">Narrow down by customer, product, payment, and dates.</p>
-              </div>
-              {isMetaLoading && <span className="text-sm text-ink-600">Loading options...</span>}
-            </div>
-            <FiltersPanel meta={meta} values={params} onChange={updateParams} />
-          </div>
-
-          <div className="rounded-2xl border border-ink-200 bg-white p-4 shadow-card">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <SortingDropdown sortBy={params.sort_by} order={params.order} onChange={changeSort} />
-              <PaginationControls page={params.page ?? 1} totalPages={data?.total_pages ?? 0} onPageChange={changePage} />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-ink-200 bg-white p-0 shadow-card">
-            {isLoading ? (
-              <div className="p-6 text-center text-ink-700">Loading...</div>
-            ) : isError ? (
-              <div className="p-6 text-center text-red-700">{(error as Error).message || "Something went wrong"}</div>
-            ) : (
-              <TransactionsTable items={data?.items} />
-            )}
-          </div>
-
-          <div className="flex items-center justify-between text-sm text-ink-700">
+    <main className="min-h-screen bg-sand-50">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <header className="mb-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              Showing {(data?.items.length ?? 0)} of {data?.total ?? 0} records
+              <h1 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+                Retail Sales Management
+              </h1>
+              <p className="mt-2 text-lg text-ink-500">
+                Manage and analyze your sales transactions efficiently.
+              </p>
             </div>
-            <PaginationControls page={params.page ?? 1} totalPages={data?.total_pages ?? 0} onPageChange={changePage} />
+            <div className="flex items-center gap-2">
+              {isFetching && (
+                <span className="inline-flex items-center rounded-full bg-ink-100 px-3 py-1 text-xs font-medium text-ink-700">
+                  Updating...
+                </span>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Controls Section */}
+        <section aria-label="Search and Filters" className="mb-8 space-y-6">
+          <div className="rounded-2xl bg-white p-6 shadow-card">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="w-full lg:max-w-2xl">
+                <SearchBar
+                  customerName={params.customer_name}
+                  phone={params.phone}
+                  onSubmit={submitSearch}
+                />
+              </div>
+              <div className="flex items-center justify-end">
+                <SortingDropdown
+                  sortBy={params.sort_by}
+                  order={params.order}
+                  onChange={changeSort}
+                />
+              </div>
+            </div>
+            
+            <div className="border-t border-sand-100 pt-6">
+              <FiltersPanel
+                meta={meta}
+                values={params}
+                onChange={updateParams}
+              />
+            </div>
           </div>
         </section>
 
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-            <h2 className="text-lg font-semibold text-ink-900">Tips</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-700">
-              <li>Use name/phone search together for precise lookup.</li>
-              <li>Combine date range with payment method to audit transactions.</li>
-              <li>Sort by quantity to spot large orders quickly.</li>
-            </ul>
-          </div>
-
-          <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-            <h2 className="text-lg font-semibold text-ink-900">Status</h2>
-            <div className="mt-2 space-y-2 text-sm text-ink-700">
-              <div className="flex items-center justify-between">
-                <span>Filters applied</span>
-                <span className="rounded-full bg-ink-100 px-2 py-1 text-xs text-ink-700">
-                  {Object.values(params).filter((v) => v !== undefined && v !== "" && v !== null && v !== 1 && v !== 10).length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Total records</span>
-                <span className="font-semibold text-ink-900">{data?.total ?? "-"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Page</span>
-                <span className="font-semibold text-ink-900">{params.page ?? 1}</span>
-              </div>
+        {/* Data Section */}
+        <section aria-label="Transactions Data" className="space-y-4">
+          {isError ? (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+              <p className="font-medium">Error loading data</p>
+              <p className="text-sm">{(error as Error).message}</p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="relative min-h-[400px] rounded-2xl bg-white shadow-card">
+                {isLoading ? (
+                  <div className="flex h-64 items-center justify-center text-ink-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-ink-200 border-t-ink-500"></div>
+                      <p>Loading transactions...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <TransactionsTable items={data?.items} />
+                )}
+              </div>
+
+              {data && (
+                <div className="mt-6">
+                  <PaginationControls
+                    page={data.page}
+                    totalPages={data.total_pages}
+                    onPageChange={changePage}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </section>
       </div>
     </main>

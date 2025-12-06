@@ -8,24 +8,26 @@ interface Props {
 
 export function PaginationControls({ page, totalPages, onPageChange }: Props) {
   return (
-    <div className="flex items-center justify-end gap-3 text-sm text-ink-700">
+    <nav aria-label="Pagination" className="flex items-center justify-end gap-3 text-sm text-ink-700">
       <button
-        className="rounded-full border border-ink-200 bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:border-ink-400 disabled:translate-y-0 disabled:opacity-50"
+        aria-label="Go to previous page"
+        className="rounded-lg border border-sand-300 bg-white px-4 py-2 font-medium shadow-sm transition-all hover:bg-sand-50 hover:text-ink-900 focus:ring-2 focus:ring-ink-500 focus:ring-offset-2 disabled:opacity-50 disabled:hover:bg-white"
         onClick={() => onPageChange(Math.max(1, page - 1))}
         disabled={page <= 1}
       >
         Previous
       </button>
-      <span className="rounded-full bg-ink-100 px-3 py-2 font-medium text-ink-800">
+      <span className="rounded-lg bg-ink-50 px-4 py-2 font-medium text-ink-900">
         Page {page} of {Math.max(totalPages, 1)}
       </span>
       <button
-        className="rounded-full border border-ink-200 bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:border-ink-400 disabled:translate-y-0 disabled:opacity-50"
+        aria-label="Go to next page"
+        className="rounded-lg border border-sand-300 bg-white px-4 py-2 font-medium shadow-sm transition-all hover:bg-sand-50 hover:text-ink-900 focus:ring-2 focus:ring-ink-500 focus:ring-offset-2 disabled:opacity-50 disabled:hover:bg-white"
         onClick={() => onPageChange(Math.min(totalPages || page + 1, page + 1))}
         disabled={page >= totalPages && totalPages !== 0}
       >
         Next
       </button>
-    </div>
+    </nav>
   );
 }
