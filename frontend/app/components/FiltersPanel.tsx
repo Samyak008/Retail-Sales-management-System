@@ -1,6 +1,6 @@
 "use client";
 
-import { MetaResponse, SalesQueryParams } from "../../lib/types";
+import { MetaResponse, SalesQueryParams } from "@/lib/types";
 
 interface Props {
   meta?: MetaResponse;
