@@ -1,6 +1,6 @@
 "use client";
 
-import { SalesItem } from "@/lib/types";
+import { SalesItem } from "../../lib/types";
 
 interface Props {
   items?: SalesItem[];

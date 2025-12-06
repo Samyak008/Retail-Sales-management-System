@@ -1,6 +1,6 @@
 "use client";
 
-import { SortBy, SortOrder } from "@/lib/types";
+import { SortBy, SortOrder } from "../../lib/types";
 
 interface Props {
   sortBy?: SortBy;
