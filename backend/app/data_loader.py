@@ -1,9 +1,10 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
+from supabase import create_client, Client
 
 # Expected column remapping to normalized snake_case names
 COLUMN_MAP: Dict[str, str] = {
@@ -39,6 +40,17 @@ COLUMN_MAP: Dict[str, str] = {
 DATA_FILENAME = "truestate_assignment_dataset.csv"
 
 
+@lru_cache(maxsize=1)
+def get_supabase_client() -> Optional[Client]:
+    """Get Supabase client if credentials are available."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    
+    if url and key:
+        return create_client(url, key)
+    return None
+
+
 def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
     rename_map = {}
     for col in df.columns:
@@ -50,21 +62,13 @@ def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=rename_map)
 
 
-@lru_cache(maxsize=1)
-def load_data() -> pd.DataFrame:
-    # Check for URL in environment variable first
-    data_url = os.getenv("DATA_CSV_URL")
-    
-    if data_url:
-        # Load from URL (for deployment)
-        df = pd.read_csv(data_url, low_memory=False)
-    else:
-        # Load from local file (for development)
-        data_path = Path(__file__).resolve().parents[2] / DATA_FILENAME
-        if not data_path.exists():
-            raise FileNotFoundError(f"Dataset not found at {data_path}")
-        df = pd.read_csv(data_path, low_memory=False)
-    
+def load_data_from_csv() -> pd.DataFrame:
+    """Load data from CSV file (fallback method)."""
+    data_path = Path(__file__).resolve().parents[2] / DATA_FILENAME
+    if not data_path.exists():
+        raise FileNotFoundError(f"Dataset not found at {data_path}")
+
+    df = pd.read_csv(data_path, low_memory=False)
     df = _standardize_columns(df)
 
     if "date" in df.columns:
@@ -77,3 +81,27 @@ def load_data() -> pd.DataFrame:
         df["phone_number"] = df["phone_number"].fillna("")
 
     return df
+
+
+@lru_cache(maxsize=1)
+def load_data() -> pd.DataFrame:
+    """
+    Load data from Supabase if available, otherwise fall back to CSV.
+    This function is cached to avoid repeated loads.
+    """
+    supabase = get_supabase_client()
+    
+    if supabase:
+        # Use Supabase - much faster!
+        print("Loading data from Supabase...")
+        try:
+            # Note: We don't load all data at once anymore
+            # Repository will query Supabase directly
+            # This just returns an empty DataFrame as a marker
+            return pd.DataFrame()
+        except Exception as e:
+            print(f"Supabase load failed: {e}, falling back to CSV")
+    
+    # Fallback to CSV
+    print("Loading data from CSV...")
+    return load_data_from_csv()
