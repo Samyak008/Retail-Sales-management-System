@@ -16,9 +16,9 @@ async def get_sales(params: SalesQuery = Depends()) -> SalesResponse:
     if supabase:
         # Use Supabase - fast and efficient!
         try:
-            page_df, total = query_supabase(params)
+            items, total = query_supabase(params)
             return SalesResponse(
-                items=page_df.fillna("").to_dict(orient="records"),
+                items=items,  # Already a list of dicts, no pandas conversion needed
                 total=total,
                 page=params.page,
                 page_size=params.page_size,

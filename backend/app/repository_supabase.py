@@ -1,4 +1,5 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
+from functools import lru_cache
 
 import pandas as pd
 from postgrest import APIResponse
@@ -7,16 +8,16 @@ from .data_loader import get_supabase_client
 from .models import SalesQuery
 
 
-def query_supabase(params: SalesQuery) -> Tuple[pd.DataFrame, int]:
+def query_supabase(params: SalesQuery) -> Tuple[List[Dict[str, Any]], int]:
     """
     Query Supabase directly with filters, sorting, and pagination.
-    Returns (dataframe, total_count).
+    Returns (list of dicts, total_count).
     """
     supabase = get_supabase_client()
     
     if not supabase:
         # Fallback to old method if Supabase not configured
-        return pd.DataFrame(), 0
+        return [], 0
     
     # Start building the query
     query = supabase.table("sales").select("*", count="exact")
@@ -76,18 +77,12 @@ def query_supabase(params: SalesQuery) -> Tuple[pd.DataFrame, int]:
     # Get total count
     total = response.count if hasattr(response, 'count') else 0
     
-    # Convert to DataFrame
-    df = pd.DataFrame(response.data)
-    
-    # Convert date column to datetime
-    if "date" in df.columns and not df.empty:
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    
-    return df, total
+    return response.data, total
 
 
+@lru_cache(maxsize=1)
 def get_metadata_from_supabase() -> dict:
-    """Get unique values for filters from Supabase."""
+    """Get unique values for filters from Supabase. Cached for performance."""
     supabase = get_supabase_client()
     
     if not supabase:
@@ -100,34 +95,49 @@ def get_metadata_from_supabase() -> dict:
         }
     
     try:
-        # Get distinct values for each field
-        regions_response = supabase.rpc("get_distinct_regions").execute()
-        genders_response = supabase.rpc("get_distinct_genders").execute()
-        categories_response = supabase.rpc("get_distinct_categories").execute()
-        tags_response = supabase.rpc("get_distinct_tags").execute()
-        payment_methods_response = supabase.rpc("get_distinct_payment_methods").execute()
+        # Use DISTINCT queries directly - much faster than fetching all rows
+        query = """
+        SELECT DISTINCT customer_region FROM sales WHERE customer_region IS NOT NULL ORDER BY customer_region;
+        """
+        regions = supabase.rpc('exec_sql', {'query': query}).execute()
+        
+        query = """
+        SELECT DISTINCT gender FROM sales WHERE gender IS NOT NULL ORDER BY gender;
+        """
+        genders = supabase.rpc('exec_sql', {'query': query}).execute()
+        
+        query = """
+        SELECT DISTINCT product_category FROM sales WHERE product_category IS NOT NULL ORDER BY product_category;
+        """
+        categories = supabase.rpc('exec_sql', {'query': query}).execute()
+        
+        query = """
+        SELECT DISTINCT payment_method FROM sales WHERE payment_method IS NOT NULL ORDER BY payment_method;
+        """
+        payments = supabase.rpc('exec_sql', {'query': query}).execute()
         
         return {
-            "regions": regions_response.data if regions_response.data else [],
-            "genders": genders_response.data if genders_response.data else [],
-            "product_categories": categories_response.data if categories_response.data else [],
-            "tags": tags_response.data if tags_response.data else [],
-            "payment_methods": payment_methods_response.data if payment_methods_response.data else []
+            "regions": [r[0] for r in regions.data] if regions.data else [],
+            "genders": [g[0] for g in genders.data] if genders.data else [],
+            "product_categories": [c[0] for c in categories.data] if categories.data else [],
+            "tags": [],
+            "payment_methods": [p[0] for p in payments.data] if payments.data else []
         }
     except Exception as e:
-        print(f"Error fetching metadata: {e}")
-        # Fallback to simple queries
+        print(f"Error fetching metadata with RPC: {e}")
+        # Simplified fallback - use PostgREST's built-in distinct
         try:
-            regions = supabase.table("sales").select("customer_region").limit(1000).execute()
+            # Much faster approach: query just 10k rows and get unique values
+            regions = supabase.table("sales").select("customer_region").limit(10000).execute()
             genders = supabase.table("sales").select("gender").limit(100).execute()
-            categories = supabase.table("sales").select("product_category").limit(1000).execute()
+            categories = supabase.table("sales").select("product_category").limit(10000).execute()
             payments = supabase.table("sales").select("payment_method").limit(100).execute()
             
             return {
                 "regions": sorted(list(set(r["customer_region"] for r in regions.data if r.get("customer_region")))),
                 "genders": sorted(list(set(g["gender"] for g in genders.data if g.get("gender")))),
                 "product_categories": sorted(list(set(c["product_category"] for c in categories.data if c.get("product_category")))),
-                "tags": [],  # Tags need special handling
+                "tags": [],
                 "payment_methods": sorted(list(set(p["payment_method"] for p in payments.data if p.get("payment_method"))))
             }
         except Exception as e2:
