@@ -33,13 +33,13 @@ class SalesQuery(BaseModel):
     """
     customer_name: Optional[str] = Field(None, description="Search by customer name (contains, case-insensitive)")
     phone: Optional[str] = Field(None, description="Search by phone number (contains)")
-    region: Optional[str] = Field(None, description="Filter by customer region")
-    gender: Optional[str] = Field(None, description="Filter by gender")
+    region: Optional[List[str]] = Field(None, description="Filter by customer region (multi-select)")
+    gender: Optional[List[str]] = Field(None, description="Filter by gender (multi-select)")
     age_min: Optional[int] = Field(None, ge=0, description="Minimum age")
     age_max: Optional[int] = Field(None, ge=0, description="Maximum age")
-    product_category: Optional[str] = Field(None, description="Filter by product category")
-    tag: Optional[str] = Field(None, description="Filter by tag (contains)")
-    payment_method: Optional[str] = Field(None, description="Filter by payment method")
+    product_category: Optional[List[str]] = Field(None, description="Filter by product category (multi-select)")
+    tag: Optional[List[str]] = Field(None, description="Filter by tag (multi-select contains)")
+    payment_method: Optional[List[str]] = Field(None, description="Filter by payment method (multi-select)")
     date_from: Optional[date] = Field(None, description="Start date (inclusive)")
     date_to: Optional[date] = Field(None, description="End date (inclusive)")
     sort_by: str = Field("date", description="Sort field: date|quantity|customer_name")
@@ -58,6 +58,19 @@ class SalesQuery(BaseModel):
         if v not in {"date", "quantity", "customer_name"}:
             raise ValueError("sort_by must be one of: date, quantity, customer_name")
         return v
+
+    @field_validator("region", "gender", "product_category", "payment_method", "tag", mode="before")
+    def coerce_to_list(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            parts = [part.strip() for part in v.split(",")]
+            cleaned = [part for part in parts if part]
+            return cleaned or None
+        if isinstance(v, list):
+            cleaned = [item for item in v if isinstance(item, str) and item.strip()]
+            return cleaned or None
+        return None
 
 
 class SalesResponse(BaseModel):

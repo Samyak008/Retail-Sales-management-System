@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..data_loader import load_data, get_supabase_client
 from ..models import MetaResponse, SalesQuery, SalesResponse
@@ -9,8 +9,44 @@ from ..utils import distinct_tags, distinct_values, total_pages
 router = APIRouter(tags=["sales"])
 
 
+def sales_query(
+    customer_name: str | None = Query(None),
+    phone: str | None = Query(None),
+    region: list[str] | None = Query(None),
+    gender: list[str] | None = Query(None),
+    age_min: int | None = Query(None),
+    age_max: int | None = Query(None),
+    product_category: list[str] | None = Query(None),
+    tag: list[str] | None = Query(None),
+    payment_method: list[str] | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    sort_by: str = Query("date"),
+    order: str = Query("desc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+) -> SalesQuery:
+    return SalesQuery(
+        customer_name=customer_name,
+        phone=phone,
+        region=region,
+        gender=gender,
+        age_min=age_min,
+        age_max=age_max,
+        product_category=product_category,
+        tag=tag,
+        payment_method=payment_method,
+        date_from=date_from,
+        date_to=date_to,
+        sort_by=sort_by,
+        order=order,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/sales", response_model=SalesResponse)
-async def get_sales(params: SalesQuery = Depends()) -> SalesResponse:
+async def get_sales(params: SalesQuery = Depends(sales_query)) -> SalesResponse:
     supabase = get_supabase_client()
     
     if supabase:

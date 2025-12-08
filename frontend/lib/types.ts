@@ -4,13 +4,13 @@ export type SortOrder = "asc" | "desc";
 export interface SalesQueryParams {
   customer_name?: string;
   phone?: string;
-  region?: string;
-  gender?: string;
+  region?: string[];
+  gender?: string[];
   age_min?: number;
   age_max?: number;
-  product_category?: string;
-  tag?: string;
-  payment_method?: string;
+  product_category?: string[];
+  tag?: string[];
+  payment_method?: string[];
   date_from?: string; // ISO date string
   date_to?: string; // ISO date string
   sort_by?: SortBy;

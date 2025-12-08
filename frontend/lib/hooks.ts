@@ -14,10 +14,18 @@ const defaultSalesParams: SalesQueryParams = {
 };
 
 const stableKey = (params: SalesQueryParams): string => {
-  const sortedEntries = Object.entries(params)
+  const normalizedEntries = Object.entries(params)
+    .map(([k, v]) => {
+      if (Array.isArray(v)) {
+        const cleaned = v.filter((item) => item !== undefined && item !== null && item !== "");
+        return [k, cleaned.length ? [...cleaned].sort() : undefined];
+      }
+      return [k, v];
+    })
     .filter(([, v]) => v !== undefined && v !== null && v !== "")
     .sort(([a], [b]) => a.localeCompare(b));
-  return JSON.stringify(sortedEntries);
+
+  return JSON.stringify(normalizedEntries);
 };
 
 export const useSales = (params: SalesQueryParams) => {

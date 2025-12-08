@@ -8,6 +8,13 @@ from .models import SalesQuery
 def apply_filters(df: pd.DataFrame, params: SalesQuery) -> pd.DataFrame:
     filtered = df
 
+    def to_list(val):
+        if val is None:
+            return []
+        if isinstance(val, list):
+            return [v for v in val if v is not None and v != ""]
+        return [val]
+
     if params.customer_name and "customer_name" in filtered.columns:
         mask = filtered["customer_name"].str.contains(params.customer_name, case=False, na=False)
         filtered = filtered[mask]
@@ -16,11 +23,13 @@ def apply_filters(df: pd.DataFrame, params: SalesQuery) -> pd.DataFrame:
         mask = filtered["phone_number"].astype(str).str.contains(params.phone, na=False)
         filtered = filtered[mask]
 
-    if params.region and "customer_region" in filtered.columns:
-        filtered = filtered[filtered["customer_region"] == params.region]
+    regions = to_list(params.region)
+    if regions and "customer_region" in filtered.columns:
+        filtered = filtered[filtered["customer_region"].isin(regions)]
 
-    if params.gender and "gender" in filtered.columns:
-        filtered = filtered[filtered["gender"] == params.gender]
+    genders = to_list(params.gender)
+    if genders and "gender" in filtered.columns:
+        filtered = filtered[filtered["gender"].isin(genders)]
 
     if params.age_min is not None and "age" in filtered.columns:
         filtered = filtered[filtered["age"] >= params.age_min]
@@ -28,14 +37,19 @@ def apply_filters(df: pd.DataFrame, params: SalesQuery) -> pd.DataFrame:
     if params.age_max is not None and "age" in filtered.columns:
         filtered = filtered[filtered["age"] <= params.age_max]
 
-    if params.product_category and "product_category" in filtered.columns:
-        filtered = filtered[filtered["product_category"] == params.product_category]
+    categories = to_list(params.product_category)
+    if categories and "product_category" in filtered.columns:
+        filtered = filtered[filtered["product_category"].isin(categories)]
 
-    if params.tag and "tags" in filtered.columns:
-        filtered = filtered[filtered["tags"].str.contains(params.tag, case=False, na=False)]
+    tags = [t.lower() for t in to_list(params.tag)]
+    if tags and "tags" in filtered.columns:
+        filtered = filtered[filtered["tags"].astype(str).str.lower().apply(
+            lambda cell: any(tag in cell for tag in tags)
+        )]
 
-    if params.payment_method and "payment_method" in filtered.columns:
-        filtered = filtered[filtered["payment_method"] == params.payment_method]
+    methods = to_list(params.payment_method)
+    if methods and "payment_method" in filtered.columns:
+        filtered = filtered[filtered["payment_method"].isin(methods)]
 
     if params.date_from and "date" in filtered.columns:
         filtered = filtered[filtered["date"] >= pd.to_datetime(params.date_from)]

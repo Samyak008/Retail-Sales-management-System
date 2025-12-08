@@ -6,7 +6,16 @@ const toSearchParams = (params: SalesQueryParams): string => {
   const search = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return;
+    if (value === undefined || value === null) return;
+
+    if (Array.isArray(value)) {
+      const cleaned = value.filter((v) => v !== undefined && v !== null && v !== "");
+      if (cleaned.length === 0) return;
+      cleaned.forEach((v) => search.append(key, String(v)));
+      return;
+    }
+
+    if (value === "") return;
     search.append(key, String(value));
   });
 
