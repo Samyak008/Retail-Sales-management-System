@@ -1,0 +1,17 @@
+name: Keep Alive
+
+on:
+  schedule:
+    # Run every 14 minutes (Render spins down after 15 minutes of inactivity)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend
+        run: |
+          # Replace with your actual Render backend URL
+          # You can also store this in GitHub Secrets as ${{ secrets.BACKEND_URL }}
+          curl -I https://retail-sales-api-3gyu.onrender.com/api/health || echo "Ping failed"
