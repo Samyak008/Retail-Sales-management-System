@@ -20,7 +20,17 @@ def query_supabase(params: SalesQuery) -> Tuple[List[Dict[str, Any]], int]:
         return [], 0
     
     # Start building the query
-    query = supabase.table("sales").select("*", count="exact")
+    # Optimization: Use 'planned' count for unfiltered queries to avoid full table scan
+    # 'exact' count is slow on large tables. 'planned' uses Postgres statistics (instant).
+    has_filters = any([
+        params.customer_name, params.phone, params.region, params.gender,
+        params.age_min is not None, params.age_max is not None, 
+        params.product_category, params.tag, params.payment_method, 
+        params.date_from, params.date_to
+    ])
+    
+    count_method = "exact" if has_filters else "planned"
+    query = supabase.table("sales").select("*", count=count_method)
     
     # Apply filters
     if params.customer_name:
@@ -95,34 +105,36 @@ def get_metadata_from_supabase() -> dict:
         }
     
     try:
-        # Use DISTINCT queries directly - much faster than fetching all rows
+        # Optimized metadata query: Fetch all distinct values in a single round-trip
+        # This reduces latency significantly compared to 4 sequential requests
         query = """
-        SELECT DISTINCT customer_region FROM sales WHERE customer_region IS NOT NULL ORDER BY customer_region;
+        SELECT json_build_object(
+            'regions', (SELECT COALESCE(array_agg(DISTINCT customer_region ORDER BY customer_region), '{}') FROM sales WHERE customer_region IS NOT NULL),
+            'genders', (SELECT COALESCE(array_agg(DISTINCT gender ORDER BY gender), '{}') FROM sales WHERE gender IS NOT NULL),
+            'product_categories', (SELECT COALESCE(array_agg(DISTINCT product_category ORDER BY product_category), '{}') FROM sales WHERE product_category IS NOT NULL),
+            'payment_methods', (SELECT COALESCE(array_agg(DISTINCT payment_method ORDER BY payment_method), '{}') FROM sales WHERE payment_method IS NOT NULL)
+        );
         """
-        regions = supabase.rpc('exec_sql', {'query': query}).execute()
+        # Try to execute via RPC if available
+        result = supabase.rpc('exec_sql', {'query': query}).execute()
         
-        query = """
-        SELECT DISTINCT gender FROM sales WHERE gender IS NOT NULL ORDER BY gender;
-        """
-        genders = supabase.rpc('exec_sql', {'query': query}).execute()
-        
-        query = """
-        SELECT DISTINCT product_category FROM sales WHERE product_category IS NOT NULL ORDER BY product_category;
-        """
-        categories = supabase.rpc('exec_sql', {'query': query}).execute()
-        
-        query = """
-        SELECT DISTINCT payment_method FROM sales WHERE payment_method IS NOT NULL ORDER BY payment_method;
-        """
-        payments = supabase.rpc('exec_sql', {'query': query}).execute()
-        
-        return {
-            "regions": [r[0] for r in regions.data] if regions.data else [],
-            "genders": [g[0] for g in genders.data] if genders.data else [],
-            "product_categories": [c[0] for c in categories.data] if categories.data else [],
-            "tags": [],
-            "payment_methods": [p[0] for p in payments.data] if payments.data else []
-        }
+        if result.data and len(result.data) > 0:
+            data = result.data[0]
+            # Handle case where data might be wrapped or direct
+            if isinstance(data, dict) and 'json_build_object' in data:
+                data = data['json_build_object']
+            
+            return {
+                "regions": data.get("regions", []),
+                "genders": data.get("genders", []),
+                "product_categories": data.get("product_categories", []),
+                "tags": [],
+                "payment_methods": data.get("payment_methods", [])
+            }
+            
+        # If we get here, the result format wasn't as expected, fall through to fallback
+        raise ValueError("Unexpected RPC response format")
+
     except Exception as e:
         print(f"Error fetching metadata with RPC: {e}")
         # Simplified fallback - use PostgREST's built-in distinct
