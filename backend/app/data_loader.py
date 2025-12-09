@@ -64,9 +64,28 @@ def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def load_data_from_csv() -> pd.DataFrame:
     """Load data from CSV file (fallback method)."""
-    data_path = Path(__file__).resolve().parents[2] / DATA_FILENAME
-    if not data_path.exists():
-        raise FileNotFoundError(f"Dataset not found at {data_path}")
+    # Try multiple locations for the dataset
+    possible_paths = [
+        Path(__file__).resolve().parents[2] / DATA_FILENAME,  # Original path (root)
+        Path(__file__).resolve().parents[1] / DATA_FILENAME,  # backend/
+        Path("/opt/render/project/src") / DATA_FILENAME,      # Render root explicit
+        Path.cwd() / DATA_FILENAME,                           # Current working directory
+    ]
+    
+    data_path = None
+    for path in possible_paths:
+        if path.exists():
+            data_path = path
+            break
+            
+    if not data_path:
+        # List directories to help debug
+        try:
+            cwd_files = list(Path.cwd().glob("*"))
+            print(f"CWD files: {cwd_files}")
+        except Exception:
+            pass
+        raise FileNotFoundError(f"Dataset not found. Searched in: {[str(p) for p in possible_paths]}")
 
     df = pd.read_csv(data_path, low_memory=False)
     df = _standardize_columns(df)
